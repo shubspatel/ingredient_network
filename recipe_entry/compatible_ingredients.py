@@ -11,8 +11,7 @@ score_factory= {0:cs_from_shared_recipes_strict,
                 6:cs_from_shared_recipes_over_total_strict,
                 7:cs_from_shared_recipes_over_total_lenient}
 
-sample_size = 100
-percentile = 0.8
+sample_size = 50
 
 
 def _get_num_ingredients(cursor):
@@ -32,9 +31,10 @@ def _get_ing_name(ing_ID, cursor):
     return cursor.fetchone()['name']
 
 
-def _calibrate(seed_ing, total_num_ingredients, scoring_system, cursor):
+def _calibrate(seed_ing, total_num_ingredients, scoring_system, percentile, cursor):
     start_time = time.time()
     print("Beginning Calibration!")
+
     score_library = []
     used_IDs = set()
     rand_id = 0
@@ -53,31 +53,55 @@ def _calibrate(seed_ing, total_num_ingredients, scoring_system, cursor):
             score_library.append(score)
 
     score_library.sort()
-    value_to_choose = int(len(score_library) * percentile)
+
+    threshold_dict = {}
+
+    for val in range(percentile-15, percentile+15, 5):
+        test = int(len(score_library) * (val/100))
+        threshold_dict[val] = score_library[test]
 
     print("calibration time: ", time.time()-start_time)
-    return score_library[value_to_choose]
+    return threshold_dict
 
 
-def get_like_ingredients(seed_ing, amount_of_ingredients, scoring_system, cursor):
+def get_like_ingredients(request, cursor):
+
+    seed_ing = request.seed
+    amount_of_ingredients = request.num_ingredients
+    scoring_system = request.scoring_system
+    threshold = 0
 
     start_time = time.time()
     total_num_ingredients = _get_num_ingredients(cursor)
 
-    return_list = {}
+    return_list = request.associated_ingredients
 
-    calibration_counter = 1
-    threshold = _calibrate(seed_ing, total_num_ingredients, scoring_system, cursor)
+    if not request.threshold_library:
+        print("Must Calibrate!")
+        calibration_counter = 1
+        request.threshold_library = _calibrate(seed_ing,
+                                               total_num_ingredients,
+                                               scoring_system,
+                                               request.percentile,
+                                               cursor)
 
-    while threshold == 0:
-        threshold = _calibrate(seed_ing, total_num_ingredients, scoring_system, cursor)
-        calibration_counter += 1
+        threshold = request.threshold_library[request.percentile]
 
-        if calibration_counter == 5:
-            return []
+        while threshold == 0:
+            threshold = _calibrate(seed_ing,
+                                   total_num_ingredients,
+                                   scoring_system,
+                                   request.percentile,
+                                   cursor)
 
-    print("Done Calibrating! My threshold score is: ", threshold)
+            calibration_counter += 1
 
+            if calibration_counter == 5:
+                return []
+
+        print("Done Calibrating! My threshold score is: ", threshold)
+
+    threshold = request.threshold_library[request.percentile]
     used_IDs = set()
     rand_id = 0
 
@@ -98,5 +122,6 @@ def get_like_ingredients(seed_ing, amount_of_ingredients, scoring_system, cursor
         if score >= threshold:
             return_list[rand_ing] = score
 
+    request.associated_ingredients = return_list
     print("Compatibility search took: ", time.time()-start_time, "seconds")
-    return return_list
+    return request
