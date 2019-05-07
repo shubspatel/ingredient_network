@@ -15,7 +15,11 @@ def _initialize():
                            "4:cs_from_ing_neighbors_in_shared_recipes_strict \n"
                            "5:cs_from_ing_neighbors_in_shared_recipes_lenient \n"
                            "6:cs_from_shared_recipes_over_total_strict \n"
-                           "7:cs_from_shared_recipes_over_total_lenient\n")
+                           "7:cs_from_shared_recipes_over_total_lenient\n"
+                           "Enter an empty string for default (recommended)\n")
+
+    if not scoring_system.strip():
+        scoring_system = 5
 
     scoring_system = int(scoring_system)
     return IngredientsRequest(seed_ing, num_ingredients, scoring_system)
@@ -26,7 +30,7 @@ def _get_associated_ingredients(ingredients_request, connection):
             retVal = get_like_ingredients(ingredients_request, cursor).associated_ingredients
 
             if not retVal:
-                print("No ingredients found! Maybe too low a threshold?")
+                print("No ingredients found! Maybe too high a threshold?")
             else:
                 print("Try these ingredients!: ", ", ".join(retVal.keys()))
 
@@ -61,14 +65,14 @@ def _recurring_instructions(ingredients_request, connection):
         _recurring_instructions(ingredients_request, connection)
     elif next_instruction == "4":
         _exit(connection)
-        main()
+        compatibility_main()
     else:
         _exit(connection)
 
     return
 
 
-def main():
+def compatibility_main():
 
     # set up connection
     connection = pymysql.connect(host='localhost',
@@ -83,6 +87,3 @@ def main():
     _get_associated_ingredients(ingredients_request, connection)
 
     _recurring_instructions(ingredients_request, connection)
-
-
-main()

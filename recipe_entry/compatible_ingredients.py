@@ -11,7 +11,7 @@ score_factory= {0:cs_from_shared_recipes_strict,
                 6:cs_from_shared_recipes_over_total_strict,
                 7:cs_from_shared_recipes_over_total_lenient}
 
-sample_size = 50
+sample_size = 636 # size needed for 95% confidence and +- 5%
 
 
 def _get_num_ingredients(cursor):
